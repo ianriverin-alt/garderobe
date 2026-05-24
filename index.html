@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma Garde-Robe</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f5f0; --surface: #ffffff; --surface2: #f0ede6;
+    --border: #e2ddd6; --border2: #ccc8bf; --text: #1a1714;
+    --text2: #6b6560; --text3: #9e9890; --accent: #2c2420;
+    --accent2: #c4a882; --haut: #4a6741; --bas: #3d5a7a;
+    --radius: 12px; --radius-sm: 7px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  .app { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--accent); padding: 2rem 1.25rem; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-logo { font-family: 'Playfair Display', serif; color: #f7f5f0; font-size: 1.2rem; font-weight: 400; margin-bottom: 1.25rem; padding-bottom: 1.25rem; border-bottom: 0.5px solid rgba(255,255,255,0.15); line-height: 1.3; }
+  .sidebar-logo span { display: block; font-size: 0.68rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); font-family: 'DM Sans', sans-serif; font-weight: 400; margin-top: 2px; }
+  .nav-btn { background: none; border: none; color: rgba(247,245,240,0.6); font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 400; letter-spacing: 0.03em; padding: 9px 12px; border-radius: var(--radius-sm); cursor: pointer; text-align: left; display: flex; align-items: center; gap: 9px; transition: all 0.15s; width: 100%; }
+  .nav-btn:hover { background: rgba(255,255,255,0.07); color: #f7f5f0; }
+  .nav-btn.active { background: rgba(255,255,255,0.12); color: #f7f5f0; font-weight: 500; }
+  .nav-btn svg { opacity: 0.7; flex-shrink: 0; }
+  .nav-btn.active svg { opacity: 1; }
+  .sidebar-divider { height: 0.5px; background: rgba(255,255,255,0.1); margin: 6px 0; }
+  .sidebar-label { font-size: 0.63rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent2); padding: 0 12px; margin-top: 4px; margin-bottom: 2px; }
+
+  /* Sync status */
+  .sync-status { margin-top: auto; padding-top: 1rem; border-top: 0.5px solid rgba(255,255,255,0.1); }
+  .sync-pill { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 0.75rem; cursor: pointer; transition: background 0.15s; border: none; width: 100%; font-family: 'DM Sans', sans-serif; }
+  .sync-pill:hover { background: rgba(255,255,255,0.07); }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .sync-dot.ok { background: #6fcf97; }
+  .sync-dot.off { background: #bbb; }
+  .sync-dot.syncing { background: #f2c94c; animation: pulse 1s infinite; }
+  .sync-dot.error { background: #eb5757; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .sync-label { color: rgba(247,245,240,0.7); }
+
+  /* Main */
+  .main { padding: 2.5rem; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-header { margin-bottom: 2rem; }
+  .page-title { font-family: 'Playfair Display', serif; font-size: 1.7rem; font-weight: 400; color: var(--text); margin-bottom: 4px; }
+  .page-sub { font-size: 0.82rem; color: var(--text3); }
+
+  /* Stats */
+  .stats-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
+  .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 400; line-height: 1; }
+  .stat-lbl { font-size: 0.72rem; color: var(--text3); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+  /* Form */
+  .form-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 1.75rem; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-label { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text3); font-weight: 500; }
+  input[type=text], select { font-family: 'DM Sans', sans-serif; font-size: 0.875rem; color: var(--text); background: var(--bg); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 9px 12px; outline: none; transition: border-color 0.15s; width: 100%; }
+  input[type=text]:focus, select:focus { border-color: var(--accent); }
+  .photo-upload { border: 1.5px dashed var(--border2); border-radius: var(--radius-sm); padding: 1.5rem; text-align: center; cursor: pointer; transition: all 0.15s; background: var(--bg); position: relative; overflow: hidden; min-height: 100px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .photo-upload:hover { border-color: var(--accent2); background: var(--surface2); }
+  .photo-upload-icon { font-size: 1.4rem; margin-bottom: 5px; }
+  .photo-upload-text { font-size: 0.78rem; color: var(--text3); }
+  .photo-preview { width: 100%; max-height: 150px; object-fit: cover; border-radius: var(--radius-sm); display: none; }
+  .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding-top: 20px; border-top: 0.5px solid var(--border); }
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 500; padding: 9px 22px; border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; border: none; }
+  .btn-primary { background: var(--accent); color: #f7f5f0; }
+  .btn-primary:hover { background: #3a322e; }
+  .btn-secondary { background: var(--surface2); color: var(--text2); border: 0.5px solid var(--border); }
+  .btn-secondary:hover { background: var(--border); }
+  .feedback { font-size: 0.8rem; color: var(--haut); display: none; align-items: center; gap: 5px; }
+
+  /* Catalogue */
+  .filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.5rem; align-items: center; }
+  .filter-label { font-size: 0.72rem; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-right: 4px; }
+  .chip { padding: 5px 14px; border-radius: 30px; font-size: 0.78rem; cursor: pointer; border: 0.5px solid var(--border2); background: var(--surface); color: var(--text2); transition: all 0.12s; font-family: 'DM Sans', sans-serif; }
+  .chip:hover { border-color: var(--accent); color: var(--text); }
+  .chip.active { background: var(--accent); color: #f7f5f0; border-color: var(--accent); }
+  .clothes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: 14px; }
+  .clothes-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; position: relative; transition: transform 0.15s, box-shadow 0.15s; }
+  .clothes-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.07); }
+  .card-photo { width: 100%; height: 140px; object-fit: cover; display: block; background: var(--surface2); }
+  .card-photo-placeholder { width: 100%; height: 140px; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+  .card-body { padding: 12px 14px; }
+  .card-name { font-size: 0.85rem; font-weight: 500; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card-meta { font-size: 0.72rem; color: var(--text3); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+  .badge { font-size: 0.65rem; font-weight: 500; padding: 2px 7px; border-radius: 20px; }
+  .badge-haut { background: #e8f0e6; color: #3a5736; }
+  .badge-bas { background: #e2eaf4; color: #2d4a68; }
+  .card-delete { position: absolute; top: 8px; right: 8px; background: rgba(255,255,255,0.9); border: 0.5px solid var(--border); border-radius: 50%; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; color: var(--text3); opacity: 0; transition: opacity 0.15s; }
+  .clothes-card:hover .card-delete { opacity: 1; }
+  .card-delete:hover { color: #b44; }
+  .empty { text-align: center; padding: 4rem 2rem; color: var(--text3); font-size: 0.875rem; grid-column: 1/-1; }
+
+  /* Mix */
+  .mix-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+  .mix-col-title { font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); font-weight: 500; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .mix-col-title::after { content: ''; flex: 1; height: 0.5px; background: var(--border); }
+  .mix-scroll { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px; }
+  .mix-scroll::-webkit-scrollbar { width: 3px; }
+  .mix-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 10px; }
+  .mix-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: all 0.12s; }
+  .mix-item:hover { border-color: var(--accent2); }
+  .mix-item.sel { border: 1.5px solid var(--accent); background: #faf9f7; }
+  .mix-thumb { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; overflow: hidden; }
+  .mix-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .mix-info .name { font-size: 0.83rem; font-weight: 500; }
+  .mix-info .meta { font-size: 0.72rem; color: var(--text3); margin-top: 1px; }
+  .preview-area { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 2rem; text-align: center; margin-top: 2rem; min-height: 180px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .preview-photos { display: flex; gap: 16px; justify-content: center; align-items: flex-end; margin-bottom: 6px; }
+  .preview-photo { width: 100px; height: 120px; object-fit: cover; border-radius: var(--radius-sm); border: 0.5px solid var(--border); }
+  .preview-emoji-pair { font-size: 3.5rem; line-height: 1; letter-spacing: 4px; }
+  .preview-names { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 400; }
+  .preview-compat { font-size: 0.78rem; color: var(--text3); }
+  .preview-hint { font-size: 0.82rem; color: var(--text3); }
+
+  /* Drive connect screen */
+  .drive-screen { max-width: 440px; margin: 3rem auto; text-align: center; }
+  .drive-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .drive-title { font-family: 'Playfair Display', serif; font-size: 1.4rem; margin-bottom: 8px; }
+  .drive-desc { font-size: 0.85rem; color: var(--text3); line-height: 1.7; margin-bottom: 1.5rem; }
+  .drive-btn { display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #f7f5f0; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500; padding: 11px 24px; border-radius: var(--radius-sm); cursor: pointer; border: none; }
+  .drive-btn:hover { background: #3a322e; }
+  .drive-btn svg { opacity: 0.8; }
+
+  /* Toast */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent); color: #f7f5f0; font-family: 'DM Sans', sans-serif; font-size: 0.82rem; padding: 10px 18px; border-radius: var(--radius-sm); opacity: 0; transform: translateY(8px); transition: all 0.25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.error { background: #7a2828; }
+
+  @media (max-width: 768px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { height: auto; position: static; flex-direction: row; flex-wrap: wrap; padding: 1rem; gap: 4px; }
+    .sidebar-logo { flex-basis: 100%; margin-bottom: 0.5rem; padding-bottom: 0.5rem; }
+    .sync-status { margin-top: 0; padding-top: 0; border-top: none; margin-left: auto; }
+    .main { padding: 1.25rem; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .mix-layout { grid-template-columns: 1fr; }
+    .form-grid.three { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-logo">Ma Garde-Robe <span>Collection personnelle</span></div>
+
+    <button class="nav-btn active" onclick="goTo('ajouter',this)">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Ajouter
+    </button>
+    <button class="nav-btn" onclick="goTo('catalogue',this)">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Catalogue
+    </button>
+    <button class="nav-btn" onclick="goTo('mix',this)">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Mix & Match
+    </button>
+
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-label">Données</div>
+    <button class="nav-btn" onclick="goTo('export',this)">
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Exporter
+    </button>
+
+    <div class="sync-status">
+      <button class="sync-pill" onclick="handleSyncClick()" title="Statut Google Drive">
+        <span class="sync-dot off" id="sync-dot"></span>
+        <span class="sync-label" id="sync-label">Non connecté</span>
+      </button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- AJOUTER -->
+    <div id="page-ajouter" class="page active">
+      <div class="page-header">
+        <h1 class="page-title">Ajouter un vêtement</h1>
+        <p class="page-sub">Catalogue ta garde-robe, un item à la fois.</p>
+      </div>
+      <div class="form-card">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Nom *</label>
+            <input type="text" id="inp-nom" placeholder="Ex: Chemise lin crème" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Catégorie *</label>
+            <select id="inp-cat">
+              <optgroup label="── Hauts ──">
+                <option value="t-shirt">T-shirt</option>
+                <option value="chemise">Chemise</option>
+                <option value="pull">Pull / Tricot</option>
+                <option value="veste">Veste / Blazer</option>
+                <option value="manteau">Manteau</option>
+                <option value="haut-autre">Autre haut</option>
+              </optgroup>
+              <optgroup label="── Bas ──">
+                <option value="pantalon">Pantalon</option>
+                <option value="jean">Jean</option>
+                <option value="short">Short</option>
+                <option value="jupe">Jupe</option>
+                <option value="bas-autre">Autre bas</option>
+              </optgroup>
+              <optgroup label="── Complets ──">
+                <option value="robe">Robe</option>
+                <option value="combinaison">Combinaison</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid three">
+          <div class="form-group">
+            <label class="form-label">Couleur</label>
+            <select id="inp-couleur">
+              <option value="#ffffff">Blanc</option>
+              <option value="#f5f0e8">Crème / Beige</option>
+              <option value="#1a1a1a">Noir</option>
+              <option value="#6b7280">Gris</option>
+              <option value="#8B6450">Brun / Caramel</option>
+              <option value="#1d4ed8">Bleu</option>
+              <option value="#15803d">Vert</option>
+              <option value="#b91c1c">Rouge</option>
+              <option value="#7c3aed">Mauve</option>
+              <option value="#d97706">Jaune / Ocre</option>
+              <option value="#ec4899">Rose</option>
+              <option value="#0e7490">Teal</option>
+              <option value="#f97316">Orange</option>
+              <option value="#4a2545">Bordeaux</option>
+              <option value="#multi">Imprimé / Multi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Saison</label>
+            <select id="inp-saison">
+              <option value="4s">Toutes saisons</option>
+              <option value="ete">Été</option>
+              <option value="hiver">Hiver</option>
+              <option value="mi">Mi-saison</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Style</label>
+            <select id="inp-style">
+              <option value="casual">Casual</option>
+              <option value="travail">Travail</option>
+              <option value="soiree">Soirée</option>
+              <option value="sport">Sport</option>
+              <option value="outdoor">Outdoor</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Photo</label>
+            <div class="photo-upload" onclick="document.getElementById('inp-photo').click()">
+              <input type="file" id="inp-photo" accept="image/*" onchange="handlePhoto(this)" style="display:none">
+              <div id="upload-placeholder">
+                <div class="photo-upload-icon">📷</div>
+                <div class="photo-upload-text">Clique pour ajouter une photo</div>
+              </div>
+              <img id="photo-preview" class="photo-preview" alt="Aperçu">
+            </div>
+          </div>
+          <div class="form-group" style="gap:10px">
+            <div>
+              <label class="form-label">Notes</label>
+              <input type="text" id="inp-notes" placeholder="Occasion, détails..." />
+            </div>
+            <div>
+              <label class="form-label">Marque</label>
+              <input type="text" id="inp-marque" placeholder="Ex: Zara, Uniqlo..." />
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="ajouterVetement()">Ajouter au catalogue</button>
+          <button class="btn btn-secondary" onclick="resetForm()">Réinitialiser</button>
+          <span class="feedback" id="feedback">✓ Ajouté</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CATALOGUE -->
+    <div id="page-catalogue" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Catalogue</h1>
+        <p class="page-sub" id="cat-sub">Tous tes vêtements</p>
+      </div>
+      <div class="stats-bar" id="stats-bar"></div>
+      <div class="filter-bar">
+        <span class="filter-label">Filtrer</span>
+        <button class="chip active" onclick="setFilter('tout',this)">Tout</button>
+        <button class="chip" onclick="setFilter('haut',this)">Hauts</button>
+        <button class="chip" onclick="setFilter('bas',this)">Bas</button>
+        <button class="chip" onclick="setFilter('casual',this)">Casual</button>
+        <button class="chip" onclick="setFilter('travail',this)">Travail</button>
+        <button class="chip" onclick="setFilter('soiree',this)">Soirée</button>
+        <button class="chip" onclick="setFilter('hiver',this)">Hiver</button>
+        <button class="chip" onclick="setFilter('ete',this)">Été</button>
+      </div>
+      <div class="clothes-grid" id="clothes-grid"></div>
+    </div>
+
+    <!-- MIX & MATCH -->
+    <div id="page-mix" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Mix & Match</h1>
+        <p class="page-sub">Sélectionne un haut et un bas pour créer une tenue.</p>
+      </div>
+      <div class="mix-layout">
+        <div>
+          <div class="mix-col-title">Hauts</div>
+          <div class="mix-scroll" id="mix-hauts"></div>
+        </div>
+        <div>
+          <div class="mix-col-title">Bas</div>
+          <div class="mix-scroll" id="mix-bas"></div>
+        </div>
+      </div>
+      <div class="preview-area" id="preview-area">
+        <p class="preview-hint">Sélectionne un haut et un bas ci-dessus</p>
+      </div>
+    </div>
+
+    <!-- EXPORT -->
+    <div id="page-export" class="page">
+      <div class="page-header">
+        <h1 class="page-title">Exporter</h1>
+        <p class="page-sub">Sauvegarde locale de secours.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;max-width:500px;">
+        <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;">
+          <div style="font-size:0.9rem;font-weight:500;margin-bottom:6px;">💾 Télécharger en JSON</div>
+          <div style="font-size:0.8rem;color:var(--text3);margin-bottom:14px;line-height:1.6;">Exporte toutes tes données (photos incluses) en fichier local. Utile comme backup ou pour migrer vers un autre appareil.</div>
+          <button class="btn btn-primary" onclick="exportJSON()">Télécharger garde-robe.json</button>
+        </div>
+        <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;">
+          <div style="font-size:0.9rem;font-weight:500;margin-bottom:6px;">📥 Importer un JSON</div>
+          <div style="font-size:0.8rem;color:var(--text3);margin-bottom:14px;line-height:1.6;">Restaure une sauvegarde précédente. Remplace les données actuelles.</div>
+          <input type="file" id="import-file" accept=".json" onchange="importJSON(this)" style="font-size:0.8rem;">
+        </div>
+        <div style="background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;">
+          <div style="font-size:0.9rem;font-weight:500;margin-bottom:6px;">🖨️ Imprimer / PDF</div>
+          <div style="font-size:0.8rem;color:var(--text3);margin-bottom:14px;line-height:1.6;">Génère une version imprimable du catalogue.</div>
+          <button class="btn btn-secondary" onclick="window.print()">Imprimer</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const CLIENT_ID = '407007673746-4isg4om9mcvv15bj4f7m2eceamt98roo.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
+const FILE_NAME = 'garde-robe-data.json';
+
+const HAUTS = ['t-shirt','chemise','pull','veste','manteau','haut-autre'];
+const BAS = ['pantalon','jean','short','jupe','bas-autre'];
+const CAT_EMOJI = {'t-shirt':'👕','chemise':'👔','pull':'🧥','veste':'🥼','manteau':'🧥','haut-autre':'👚','pantalon':'👖','jean':'👖','short':'🩳','jupe':'👗','bas-autre':'🩲','robe':'👗','combinaison':'🥻'};
+const CAT_LABEL = {'t-shirt':'T-shirt','chemise':'Chemise','pull':'Pull','veste':'Veste','manteau':'Manteau','haut-autre':'Haut','pantalon':'Pantalon','jean':'Jean','short':'Short','jupe':'Jupe','bas-autre':'Bas','robe':'Robe','combinaison':'Combinaison'};
+const SAISON_LABEL = {'4s':'Toutes saisons','ete':'Été','hiver':'Hiver','mi':'Mi-saison'};
+const STYLE_LABEL = {'casual':'Casual','travail':'Travail','soiree':'Soirée','sport':'Sport','outdoor':'Outdoor'};
+const COULEUR_LABEL = {'#ffffff':'Blanc','#f5f0e8':'Crème','#1a1a1a':'Noir','#6b7280':'Gris','#8B6450':'Brun','#1d4ed8':'Bleu','#15803d':'Vert','#b91c1c':'Rouge','#7c3aed':'Mauve','#d97706':'Jaune','#ec4899':'Rose','#0e7490':'Teal','#f97316':'Orange','#4a2545':'Bordeaux','#multi':'Imprimé'};
+
+let clothes = [];
+let currentFilter = 'tout';
+let selHaut = null, selBas = null;
+let currentPhoto = null;
+let accessToken = null;
+let driveFileId = null;
+let syncTimeout = null;
+
+function isHaut(c) { return HAUTS.includes(c); }
+function isBas(c) { return BAS.includes(c); }
+
+function showToast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.className = 'toast', 3000);
+}
+
+function setSyncStatus(state, label) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  dot.className = 'sync-dot ' + state;
+  lbl.textContent = label;
+}
+
+function loadLocal() {
+  try { clothes = JSON.parse(localStorage.getItem('garderobe_v2') || '[]'); } catch(e) { clothes = []; }
+}
+function saveLocal() {
+  try { localStorage.setItem('garderobe_v2', JSON.stringify(clothes)); } catch(e) {}
+}
+
+// Google Sign-In
+function initGoogleAuth() {
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.onload = () => {
+    google.accounts.id.initialize({ client_id: CLIENT_ID, callback: () => {} });
+    tryAutoSignIn();
+  };
+  document.head.appendChild(script);
+}
+
+function tryAutoSignIn() {
+  const saved = localStorage.getItem('gd_token');
+  if (saved) {
+    accessToken = saved;
+    setSyncStatus('syncing', 'Connexion…');
+    loadFromDrive().catch(() => {
+      accessToken = null;
+      localStorage.removeItem('gd_token');
+      setSyncStatus('off', 'Non connecté');
+    });
+  }
+}
+
+function handleSyncClick() {
+  if (accessToken) {
+    if (confirm('Se déconnecter de Google Drive ?')) {
+      accessToken = null;
+      driveFileId = null;
+      localStorage.removeItem('gd_token');
+      setSyncStatus('off', 'Non connecté');
+      showToast('Déconnecté de Google Drive');
+    }
+  } else {
+    signInWithGoogle();
+  }
+}
+
+function signInWithGoogle() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { showToast('Connexion annulée', true); return; }
+      accessToken = resp.access_token;
+      localStorage.setItem('gd_token', accessToken);
+      setSyncStatus('syncing', 'Connexion…');
+      try {
+        await loadFromDrive();
+        showToast('✓ Connecté à Google Drive');
+      } catch(e) {
+        setSyncStatus('ok', 'Connecté');
+        await saveToDrive();
+      }
+    }
+  });
+  client.requestAccessToken();
+}
+
+async function findDriveFile() {
+  const r = await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name='" + FILE_NAME + "'", {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  const data = await r.json();
+  if (data.error && data.error.code === 401) throw new Error('auth');
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+async function loadFromDrive() {
+  setSyncStatus('syncing', 'Chargement…');
+  driveFileId = await findDriveFile();
+  if (!driveFileId) { setSyncStatus('ok', 'Connecté'); return; }
+  const r = await fetch('https://www.googleapis.com/drive/v3/files/' + driveFileId + '?alt=media', {
+    headers: { Authorization: 'Bearer ' + accessToken }
+  });
+  if (!r.ok) throw new Error('load');
+  const data = await r.json();
+  if (Array.isArray(data)) {
+    clothes = data;
+    saveLocal();
+    renderCatalogue();
+    renderMix();
+  }
+  setSyncStatus('ok', 'Synchronisé');
+}
+
+async function saveToDrive() {
+  if (!accessToken) return;
+  setSyncStatus('syncing', 'Sauvegarde…');
+  try {
+    const body = JSON.stringify(clothes);
+    const blob = new Blob([body], { type: 'application/json' });
+
+    if (!driveFileId) { driveFileId = await findDriveFile(); }
+
+    let r;
+    if (driveFileId) {
+      r = await fetch('https://www.googleapis.com/upload/drive/v3/files/' + driveFileId + '?uploadType=media', {
+        method: 'PATCH', headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' }, body: blob
+      });
+    } else {
+      const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('file', blob);
+      r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form
+      });
+      const created = await r.json();
+      driveFileId = created.id;
+      r = { ok: true };
+    }
+
+    if (!r.ok && r.status === 401) {
+      accessToken = null; localStorage.removeItem('gd_token');
+      setSyncStatus('error', 'Session expirée');
+      showToast('Session expirée — reconnecte-toi', true);
+      return;
+    }
+    setSyncStatus('ok', 'Synchronisé');
+  } catch(e) {
+    setSyncStatus('error', 'Erreur sync');
+    showToast('Erreur de synchronisation', true);
+  }
+}
+
+function scheduleSave() {
+  saveLocal();
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => saveToDrive(), 1500);
+}
+
+function handlePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 600;
+      let w = img.width, h = img.height;
+      if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
+      else if (h > MAX) { w = w * MAX / h; h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      currentPhoto = canvas.toDataURL('image/jpeg', 0.75);
+      const prev = document.getElementById('photo-preview');
+      prev.src = currentPhoto;
+      prev.style.display = 'block';
+      document.getElementById('upload-placeholder').style.display = 'none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function ajouterVetement() {
+  const nom = document.getElementById('inp-nom').value.trim();
+  if (!nom) { document.getElementById('inp-nom').focus(); return; }
+  clothes.push({
+    id: Date.now(), nom,
+    cat: document.getElementById('inp-cat').value,
+    couleur: document.getElementById('inp-couleur').value,
+    saison: document.getElementById('inp-saison').value,
+    style: document.getElementById('inp-style').value,
+    notes: document.getElementById('inp-notes').value.trim(),
+    marque: document.getElementById('inp-marque').value.trim(),
+    photo: currentPhoto || null
+  });
+  scheduleSave();
+  resetForm();
+  const fb = document.getElementById('feedback');
+  fb.style.display = 'flex';
+  setTimeout(() => fb.style.display = 'none', 2500);
+}
+
+function resetForm() {
+  ['inp-nom','inp-notes','inp-marque'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('inp-photo').value = '';
+  currentPhoto = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('upload-placeholder').style.display = 'flex';
+}
+
+function supprimerVetement(id) {
+  if (!confirm('Supprimer ce vêtement ?')) return;
+  clothes = clothes.filter(c => c.id !== id);
+  scheduleSave();
+  renderCatalogue();
+  renderMix();
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderCatalogue();
+}
+
+function getFiltered() {
+  if (currentFilter === 'tout') return clothes;
+  if (currentFilter === 'haut') return clothes.filter(c => isHaut(c.cat));
+  if (currentFilter === 'bas') return clothes.filter(c => isBas(c.cat));
+  if (['ete','hiver','mi','4s'].includes(currentFilter)) return clothes.filter(c => c.saison === currentFilter);
+  return clothes.filter(c => c.style === currentFilter);
+}
+
+function renderStats() {
+  const h = clothes.filter(c => isHaut(c.cat)).length;
+  const b = clothes.filter(c => isBas(c.cat)).length;
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat"><div class="stat-num">${clothes.length}</div><div class="stat-lbl">Vêtements</div></div>
+    <div class="stat"><div class="stat-num">${h}</div><div class="stat-lbl">Hauts</div></div>
+    <div class="stat"><div class="stat-num">${b}</div><div class="stat-lbl">Bas</div></div>
+    <div class="stat"><div class="stat-num">${h * b}</div><div class="stat-lbl">Tenues possibles</div></div>`;
+  document.getElementById('cat-sub').textContent = `${clothes.length} vêtement${clothes.length !== 1 ? 's' : ''} catalogué${clothes.length !== 1 ? 's' : ''}`;
+}
+
+function renderCatalogue() {
+  renderStats();
+  const items = getFiltered();
+  const grid = document.getElementById('clothes-grid');
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty">${clothes.length === 0 ? '👗<br><br>Aucun vêtement encore.<br>Commence par en ajouter !' : 'Aucun vêtement dans ce filtre.'}</div>`;
+    return;
+  }
+  grid.innerHTML = items.map(item => {
+    const typeBadge = isHaut(item.cat) ? '<span class="badge badge-haut">Haut</span>' : isBas(item.cat) ? '<span class="badge badge-bas">Bas</span>' : '';
+    const dotStyle = item.couleur === '#multi' ? 'background:linear-gradient(135deg,#f97316,#7c3aed,#15803d)' : `background:${item.couleur};border:0.5px solid #ccc`;
+    const photoEl = item.photo ? `<img class="card-photo" src="${item.photo}" alt="${item.nom}">` : `<div class="card-photo-placeholder">${CAT_EMOJI[item.cat]||'👕'}</div>`;
+    return `<div class="clothes-card">${photoEl}
+      <button class="card-delete" onclick="supprimerVetement(${item.id})" title="Supprimer">✕</button>
+      <div class="card-body">
+        <div class="card-name">${item.nom}</div>
+        <div class="card-meta"><span class="dot" style="${dotStyle}"></span>${CAT_LABEL[item.cat]} ${typeBadge}</div>
+        <div class="card-meta" style="margin-top:3px">${STYLE_LABEL[item.style]} · ${SAISON_LABEL[item.saison]}</div>
+        ${item.marque ? `<div class="card-meta" style="margin-top:2px;font-style:italic">${item.marque}</div>` : ''}
+      </div></div>`;
+  }).join('');
+}
+
+function renderMix() {
+  const hauts = clothes.filter(c => isHaut(c.cat));
+  const bas = clothes.filter(c => isBas(c.cat));
+  const mkItem = (item, type) => {
+    const sel = type === 'h' ? (selHaut && selHaut.id === item.id) : (selBas && selBas.id === item.id);
+    const fn = type === 'h' ? `selectHaut(${item.id})` : `selectBas(${item.id})`;
+    const ph = item.photo ? `<div class="mix-thumb"><img src="${item.photo}" alt="${item.nom}"></div>` : `<div class="mix-thumb">${CAT_EMOJI[item.cat]}</div>`;
+    return `<div class="mix-item ${sel?'sel':''}" onclick="${fn}">${ph}<div class="mix-info"><div class="name">${item.nom}</div><div class="meta">${CAT_LABEL[item.cat]} · ${STYLE_LABEL[item.style]}</div></div></div>`;
+  };
+  document.getElementById('mix-hauts').innerHTML = hauts.length ? hauts.map(h => mkItem(h,'h')).join('') : '<p style="font-size:0.8rem;color:var(--text3);padding:8px 0">Aucun haut ajouté.</p>';
+  document.getElementById('mix-bas').innerHTML = bas.length ? bas.map(b => mkItem(b,'b')).join('') : '<p style="font-size:0.8rem;color:var(--text3);padding:8px 0">Aucun bas ajouté.</p>';
+  updatePreview();
+}
+
+function selectHaut(id) { selHaut = selHaut && selHaut.id === id ? null : clothes.find(c => c.id === id); renderMix(); }
+function selectBas(id) { selBas = selBas && selBas.id === id ? null : clothes.find(c => c.id === id); renderMix(); }
+
+function updatePreview() {
+  const el = document.getElementById('preview-area');
+  if (!selHaut && !selBas) { el.innerHTML = '<p class="preview-hint">Sélectionne un haut et un bas ci-dessus</p>'; return; }
+  if (selHaut && !selBas) {
+    const ph = selHaut.photo ? `<img class="preview-photo" src="${selHaut.photo}" alt="${selHaut.nom}">` : `<div style="font-size:4rem">${CAT_EMOJI[selHaut.cat]}</div>`;
+    el.innerHTML = `${ph}<div class="preview-names">${selHaut.nom}</div><p class="preview-hint">Sélectionne un bas pour compléter</p>`; return;
+  }
+  if (!selHaut && selBas) {
+    const pb = selBas.photo ? `<img class="preview-photo" src="${selBas.photo}" alt="${selBas.nom}">` : `<div style="font-size:4rem">${CAT_EMOJI[selBas.cat]}</div>`;
+    el.innerHTML = `${pb}<div class="preview-names">${selBas.nom}</div><p class="preview-hint">Sélectionne un haut pour compléter</p>`; return;
+  }
+  const compat = selHaut.style === selBas.style ? '✓ Même occasion — bonne combinaison' : `Styles différents : ${STYLE_LABEL[selHaut.style]} + ${STYLE_LABEL[selBas.style]}`;
+  let photos = '';
+  const mkPh = (item) => item.photo ? `<img class="preview-photo" src="${item.photo}" alt="${item.nom}">` : `<div class="preview-photo" style="display:flex;align-items:center;justify-content:center;font-size:2.5rem;background:var(--surface2)">${CAT_EMOJI[item.cat]}</div>`;
+  photos = `<div class="preview-photos">${mkPh(selHaut)}${mkPh(selBas)}</div>`;
+  el.innerHTML = `${photos}<div class="preview-names">${selHaut.nom} + ${selBas.nom}</div><div class="preview-compat">${compat}</div>`;
+}
+
+function goTo(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+  if (page === 'catalogue') renderCatalogue();
+  if (page === 'mix') renderMix();
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(clothes, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'garde-robe.json'; a.click();
+}
+
+function importJSON(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!Array.isArray(data)) throw new Error();
+      if (confirm(`Importer ${data.length} vêtement(s) ? Les données actuelles seront remplacées.`)) {
+        clothes = data; scheduleSave(); renderCatalogue(); showToast('Import réussi !');
+      }
+    } catch { showToast('Fichier JSON invalide', true); }
+  };
+  reader.readAsText(file);
+}
+
+loadLocal();
+renderCatalogue();
+initGoogleAuth();
+</script>
+
+</body>
+</html>
